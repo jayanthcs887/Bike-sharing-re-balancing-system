@@ -223,9 +223,9 @@ Hackathon Project – Bike Sharing Rebalancing Analytics System
 
 Developed using Python, Streamlit, and Data Analytics techniques to improve operational efficiency in urban bike-sharing networks.
 ## Team members
-1.Jayanth C S
-2.Dheeraj M
-3.Monaj S S
-4.R P Pavan Kumar
+* Jayanth C S
+* Dheeraj M
+* Monaj S S
+* R P Pavan Kumar
 
 ---
