@@ -164,15 +164,43 @@ elif page == "Demand Analytics":
 
     st.title("📈 Demand Analytics")
     df["Weekday"] = df["Start date"].dt.day_name()
+    weekday_order = [
+    "Monday",
+    "Tuesday",
+    "Wednesday",
+    "Thursday",
+    "Friday",
+    "Saturday",
+    "Sunday"
+    ]
+
+    df["Weekday"] = pd.Categorical(
+        df["Weekday"],
+        categories=weekday_order,
+        ordered=True
+    )
 
     heatmap = pd.crosstab(
-        df["Weekday"],
-        df["Hour"]
+    df["Weekday"],
+    df["Hour"]
     )
+
+    heatmap = heatmap.reindex(weekday_order)
     
     fig = px.imshow(
-        heatmap,
-        title="Demand Heatmap"
+    heatmap,
+    title="Demand Heatmap: Trips by Hour and Weekday",
+    aspect="auto",
+    labels={
+        "x": "Hour of Day",
+        "y": "Weekday",
+        "color": "Trips"
+    }
+    )
+    
+    fig.update_layout(
+        template="plotly_dark",
+        height=500
     )
     
     st.plotly_chart(fig, width="stretch")
