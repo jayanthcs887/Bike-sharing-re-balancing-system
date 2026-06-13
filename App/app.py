@@ -205,7 +205,7 @@ elif page == "Demand Analytics":
         title="Trips Distribution by Day"
     )
 
-    st.plotly_chart(fig, width="stretch")
+    st.plotly_chart(fig2, width="stretch")
 
 # -----------------------------------
 # STATION ANALYTICS
