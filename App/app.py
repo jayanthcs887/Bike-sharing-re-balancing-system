@@ -11,6 +11,39 @@ st.set_page_config(
     page_icon="🚲",
     layout="wide"
 )
+st.markdown("""
+<style>
+.main {
+    background-color: #0E1117;
+}
+
+.metric-card {
+    background: linear-gradient(135deg,#1F2937,#111827);
+    padding: 20px;
+    border-radius: 15px;
+    border: 1px solid #374151;
+    text-align: center;
+    margin-bottom: 15px;
+}
+
+.metric-value {
+    font-size: 32px;
+    font-weight: bold;
+    color: white;
+}
+
+.metric-label {
+    color: #9CA3AF;
+}
+
+.insight-box {
+    padding:15px;
+    border-radius:10px;
+    margin:10px 0;
+    background:#1F2937;
+}
+</style>
+""", unsafe_allow_html=True)
 
 # -----------------------------------
 # LOAD DATA
@@ -55,6 +88,13 @@ page = st.sidebar.radio(
 if page == "Dashboard":
 
     st.title("🚲 Bike Sharing Analytics Dashboard")
+    st.markdown("""
+    # 🚲 Bike Sharing Rebalancing Analytics
+    
+    ### Urban Mobility Intelligence Dashboard
+    
+    Monitor demand, analyze station performance, identify deficits, and optimize bike redistribution.
+    """)
 
     total_trips = len(df)
     total_bikes = df["Bike number"].nunique()
@@ -66,12 +106,39 @@ if page == "Dashboard":
 
     peak_hour = df["Hour"].value_counts().idxmax()
 
-    c1,c2,c3,c4 = st.columns(4)
-
-    c1.metric("Total Trips", f"{total_trips:,}")
-    c2.metric("Unique Bikes", total_bikes)
-    c3.metric("Stations", stations)
-    c4.metric("Peak Hour", f"{peak_hour}:00")
+    col1, col2, col3, col4 = st.columns(4)
+    
+    with col1:
+        st.markdown(f"""
+        <div class="metric-card">
+            <div class="metric-value">{total_trips:,}</div>
+            <div class="metric-label">🚲 Total Trips</div>
+        </div>
+        """, unsafe_allow_html=True)
+    
+    with col2:
+        st.markdown(f"""
+        <div class="metric-card">
+            <div class="metric-value">{total_bikes}</div>
+            <div class="metric-label">🔧 Unique Bikes</div>
+        </div>
+        """, unsafe_allow_html=True)
+    
+    with col3:
+        st.markdown(f"""
+        <div class="metric-card">
+            <div class="metric-value">{stations}</div>
+            <div class="metric-label">🏢 Stations</div>
+        </div>
+        """, unsafe_allow_html=True)
+    
+    with col4:
+        st.markdown(f"""
+        <div class="metric-card">
+            <div class="metric-value">{peak_hour}:00</div>
+            <div class="metric-label">⏰ Peak Hour</div>
+        </div>
+        """, unsafe_allow_html=True)
 
     hourly = (
         df.groupby("Hour")
@@ -87,7 +154,7 @@ if page == "Dashboard":
         title="Trips by Hour"
     )
 
-    st.plotly_chart(fig, use_container_width=True)
+    st.plotly_chart(fig, width="stretch")
 
 # -----------------------------------
 # DEMAND ANALYTICS
@@ -96,6 +163,19 @@ if page == "Dashboard":
 elif page == "Demand Analytics":
 
     st.title("📈 Demand Analytics")
+    df["Weekday"] = df["Start date"].dt.day_name()
+
+    heatmap = pd.crosstab(
+        df["Weekday"],
+        df["Hour"]
+    )
+    
+    fig = px.imshow(
+        heatmap,
+        title="Demand Heatmap"
+    )
+    
+    st.plotly_chart(fig, width="stretch")
 
     hourly = (
         df.groupby("Hour")
@@ -110,7 +190,7 @@ elif page == "Demand Analytics":
         title="Hourly Demand"
     )
 
-    st.plotly_chart(fig, use_container_width=True)
+    st.plotly_chart(fig, width="stretch")
 
     daily = (
         df.groupby("Day")
@@ -125,7 +205,7 @@ elif page == "Demand Analytics":
         title="Trips Distribution by Day"
     )
 
-    st.plotly_chart(fig2, use_container_width=True)
+    st.plotly_chart(fig, width="stretch")
 
 # -----------------------------------
 # STATION ANALYTICS
@@ -154,7 +234,7 @@ elif page == "Station Analytics":
         title="Top 10 Busy Stations"
     )
 
-    st.plotly_chart(fig, use_container_width=True)
+    st.plotly_chart(fig, width="stretch")
 
 # -----------------------------------
 # BIKE UTILIZATION
@@ -182,7 +262,7 @@ elif page == "Bike Utilization":
         title="Top 20 Most Utilized Bikes"
     )
 
-    st.plotly_chart(fig, use_container_width=True)
+    st.plotly_chart(fig, width="stretch")
 
 # -----------------------------------
 # REBALANCING ANALYSIS
@@ -205,14 +285,19 @@ elif page == "Rebalancing Analysis":
     )
 
     flow = pd.merge(
-        checkouts,
-        checkins,
-        left_on="Start station",
-        right_on="End station",
-        how="outer"
+    checkouts,
+    checkins,
+    left_on="Start station",
+    right_on="End station",
+    how="outer"
     )
 
-    flow.fillna(0, inplace=True)
+    # Fix Streamlit Cloud / Pandas 3.x issue
+    flow["Checkouts"] = flow["Checkouts"].fillna(0)
+    flow["Checkins"] = flow["Checkins"].fillna(0)
+    
+    flow["Start station"] = flow["Start station"].fillna("")
+    flow["End station"] = flow["End station"].fillna("")
 
     flow["Station"] = flow["Start station"].fillna(
         flow["End station"]
@@ -259,6 +344,23 @@ elif page == "Rebalancing Analysis":
 elif page == "Insights":
 
     st.title("💡 Business Insights")
+    st.markdown("""
+    <div class='insight-box'>
+    🚀 Peak demand occurs during morning commuting hours.
+    </div>
+    """, unsafe_allow_html=True)
+    
+    st.markdown("""
+    <div class='insight-box'>
+    ⚠ Certain stations consistently experience negative net flow.
+    </div>
+    """, unsafe_allow_html=True)
+    
+    st.markdown("""
+    <div class='insight-box'>
+    📈 Top stations account for a significant portion of all trips.
+    </div>
+    """, unsafe_allow_html=True)
 
     peak_hour = (
         df["Hour"]
