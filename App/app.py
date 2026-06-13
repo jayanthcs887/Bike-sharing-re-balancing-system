@@ -1,167 +1,142 @@
 import streamlit as st
 import pandas as pd
-import numpy as np
 import plotly.express as px
 
+# -----------------------------------
+# PAGE CONFIG
+# -----------------------------------
+
 st.set_page_config(
-    page_title="Bike Sharing Rebalancing System",
+    page_title="Bike Sharing Analytics Dashboard",
     page_icon="🚲",
     layout="wide"
 )
 
-# ----------------------------
+# -----------------------------------
 # LOAD DATA
-# ----------------------------
+# -----------------------------------
 
 @st.cache_data
 def load_data():
-    df = pd.read_csv(
-        "data/202601-capitalbikeshare-tripdata.csv"
-    )
+    df = pd.read_csv("201912-capitalbikeshare-tripdata.csv")
+
+    df["Start date"] = pd.to_datetime(df["Start date"])
+    df["End date"] = pd.to_datetime(df["End date"])
+
+    df["Hour"] = df["Start date"].dt.hour
+    df["Day"] = df["Start date"].dt.day_name()
 
     return df
 
 df = load_data()
 
-# ----------------------------
-# PREPROCESS
-# ----------------------------
-
-time_cols = []
-
-for col in df.columns:
-    if "start" in col.lower():
-        time_cols.append(col)
-
-    if "end" in col.lower():
-        time_cols.append(col)
-
-for col in time_cols:
-    try:
-        df[col] = pd.to_datetime(df[col])
-    except:
-        pass
-
-start_time_col = time_cols[0]
-
-df["hour"] = df[start_time_col].dt.hour
-
-# ----------------------------
+# -----------------------------------
 # SIDEBAR
-# ----------------------------
+# -----------------------------------
 
-st.sidebar.title("🚲 Bike Rebalancing")
+st.sidebar.title("🚲 Navigation")
 
 page = st.sidebar.radio(
-    "Navigation",
+    "Select Page",
     [
-        "Overview",
+        "Dashboard",
         "Demand Analytics",
-        "Station Intelligence",
-        "Rebalancing Center",
+        "Station Analytics",
+        "Bike Utilization",
+        "Rebalancing Analysis",
         "Insights"
     ]
 )
 
-# ----------------------------
-# OVERVIEW
-# ----------------------------
+# -----------------------------------
+# DASHBOARD
+# -----------------------------------
 
-if page == "Overview":
+if page == "Dashboard":
 
-    st.title("🚲 Bike Sharing Rebalancing Dashboard")
-
-    col1,col2,col3,col4 = st.columns(4)
+    st.title("🚲 Bike Sharing Analytics Dashboard")
 
     total_trips = len(df)
+    total_bikes = df["Bike number"].nunique()
 
-    total_bikes = (
-        df["Bike_ID"].nunique()
-        if "Bike_ID" in df.columns
-        else 0
-    )
+    stations = pd.concat([
+        df["Start station"],
+        df["End station"]
+    ]).nunique()
 
-    stations = []
+    peak_hour = df["Hour"].value_counts().idxmax()
 
-    if "Start_Station_ID" in df.columns:
-        stations.extend(
-            df["Start_Station_ID"].unique()
-        )
+    c1,c2,c3,c4 = st.columns(4)
 
-    if "End_Station_ID" in df.columns:
-        stations.extend(
-            df["End_Station_ID"].unique()
-        )
-
-    total_stations = len(set(stations))
-
-    peak_hour = (
-        df["hour"]
-        .value_counts()
-        .idxmax()
-    )
-
-    col1.metric("Trips", f"{total_trips:,}")
-    col2.metric("Bikes", total_bikes)
-    col3.metric("Stations", total_stations)
-    col4.metric("Peak Hour", f"{peak_hour}:00")
+    c1.metric("Total Trips", f"{total_trips:,}")
+    c2.metric("Unique Bikes", total_bikes)
+    c3.metric("Stations", stations)
+    c4.metric("Peak Hour", f"{peak_hour}:00")
 
     hourly = (
-        df.groupby("hour")
+        df.groupby("Hour")
         .size()
         .reset_index(name="Trips")
     )
 
     fig = px.line(
         hourly,
-        x="hour",
+        x="Hour",
         y="Trips",
-        title="Hourly Demand Trend"
+        markers=True,
+        title="Trips by Hour"
     )
 
-    st.plotly_chart(
-        fig,
-        use_container_width=True
-    )
+    st.plotly_chart(fig, use_container_width=True)
 
-# ----------------------------
+# -----------------------------------
 # DEMAND ANALYTICS
-# ----------------------------
+# -----------------------------------
 
 elif page == "Demand Analytics":
 
     st.title("📈 Demand Analytics")
 
     hourly = (
-        df.groupby("hour")
+        df.groupby("Hour")
         .size()
         .reset_index(name="Trips")
     )
 
     fig = px.bar(
         hourly,
-        x="hour",
+        x="Hour",
         y="Trips",
-        title="Trips by Hour"
+        title="Hourly Demand"
     )
 
-    st.plotly_chart(
-        fig,
-        use_container_width=True
+    st.plotly_chart(fig, use_container_width=True)
+
+    daily = (
+        df.groupby("Day")
+        .size()
+        .reset_index(name="Trips")
     )
 
-# ----------------------------
+    fig2 = px.pie(
+        daily,
+        names="Day",
+        values="Trips",
+        title="Trips Distribution by Day"
+    )
+
+    st.plotly_chart(fig2, use_container_width=True)
+
+# -----------------------------------
 # STATION ANALYTICS
-# ----------------------------
+# -----------------------------------
 
-elif page == "Station Intelligence":
+elif page == "Station Analytics":
 
-    st.title("🏢 Station Intelligence")
+    st.title("🏢 Station Analytics")
 
-    start_col = "Start_Station_ID"
-
-    station_usage = (
-        df.groupby(start_col)
+    top_stations = (
+        df.groupby("Start station")
         .size()
         .reset_index(name="Trips")
         .sort_values(
@@ -172,81 +147,133 @@ elif page == "Station Intelligence":
     )
 
     fig = px.bar(
-        station_usage,
-        x=start_col,
-        y="Trips",
+        top_stations,
+        x="Trips",
+        y="Start station",
+        orientation="h",
         title="Top 10 Busy Stations"
     )
 
-    st.plotly_chart(
-        fig,
-        use_container_width=True
+    st.plotly_chart(fig, use_container_width=True)
+
+# -----------------------------------
+# BIKE UTILIZATION
+# -----------------------------------
+
+elif page == "Bike Utilization":
+
+    st.title("🔧 Bike Utilization Analysis")
+
+    bike_usage = (
+        df.groupby("Bike number")
+        .size()
+        .reset_index(name="Trips")
+        .sort_values(
+            "Trips",
+            ascending=False
+        )
+        .head(20)
     )
 
-# ----------------------------
-# REBALANCING
-# ----------------------------
+    fig = px.bar(
+        bike_usage,
+        x="Bike number",
+        y="Trips",
+        title="Top 20 Most Utilized Bikes"
+    )
 
-elif page == "Rebalancing Center":
+    st.plotly_chart(fig, use_container_width=True)
 
-    st.title("⚠ Rebalancing Center")
+# -----------------------------------
+# REBALANCING ANALYSIS
+# -----------------------------------
 
-    outs = (
-        df.groupby("Start_Station_ID")
+elif page == "Rebalancing Analysis":
+
+    st.title("⚠ Rebalancing Analysis")
+
+    checkouts = (
+        df.groupby("Start station")
         .size()
         .reset_index(name="Checkouts")
     )
 
-    ins = (
-        df.groupby("End_Station_ID")
+    checkins = (
+        df.groupby("End station")
         .size()
         .reset_index(name="Checkins")
     )
 
     flow = pd.merge(
-        outs,
-        ins,
-        left_on="Start_Station_ID",
-        right_on="End_Station_ID",
+        checkouts,
+        checkins,
+        left_on="Start station",
+        right_on="End station",
         how="outer"
     )
 
-    flow = flow.fillna(0)
+    flow.fillna(0, inplace=True)
 
-    flow["NetFlow"] = (
+    flow["Station"] = flow["Start station"].fillna(
+        flow["End station"]
+    )
+
+    flow["Net Flow"] = (
         flow["Checkins"]
         - flow["Checkouts"]
     )
 
     deficit = (
-        flow.sort_values("NetFlow")
-        .head(5)
+        flow.sort_values("Net Flow")
+        .head(10)
     )
 
     overflow = (
         flow.sort_values(
-            "NetFlow",
+            "Net Flow",
             ascending=False
         )
-        .head(5)
+        .head(10)
     )
 
-    st.subheader("Critical Deficit Stations")
-    st.dataframe(deficit)
+    st.subheader("Deficit Stations")
+
+    st.dataframe(
+        deficit[
+            ["Station","Net Flow"]
+        ]
+    )
 
     st.subheader("Overflow Stations")
-    st.dataframe(overflow)
 
-# ----------------------------
+    st.dataframe(
+        overflow[
+            ["Station","Net Flow"]
+        ]
+    )
+
+# -----------------------------------
 # INSIGHTS
-# ----------------------------
+# -----------------------------------
 
 elif page == "Insights":
 
-    st.title("💡 Operational Insights")
+    st.title("💡 Business Insights")
 
     peak_hour = (
-        df["hour"]
+        df["Hour"]
+        .value_counts()
+        .idxmax()
+    )
+
+    busiest_station = (
+        df["Start station"]
+        .value_counts()
+        .idxmax()
+    )
+
+    top_member = (
+        df["Member type"]
         .value_counts()
         .idxmax()
     )
@@ -256,20 +283,19 @@ elif page == "Insights":
     )
 
     st.info(
-        "High-demand stations should receive additional bikes before peak periods."
+        f"Most active station: {busiest_station}"
     )
 
     st.warning(
-        "Stations with sustained negative net flow require rebalancing."
+        f"Majority rider category: {top_member}"
     )
 
-    st.markdown(
-        """
-        ### Recommendations
+    st.markdown("""
+    ### Recommendations
 
-        - Schedule bike transfers before morning rush hours.
-        - Monitor top deficit stations continuously.
-        - Increase dock capacity at busy stations.
-        - Deploy maintenance teams near high-utilization stations.
-        """
-    )
+    - Rebalance bikes before peak hours.
+    - Add more docks at busy stations.
+    - Monitor heavily used bikes.
+    - Increase bike availability at deficit stations.
+    - Plan maintenance for frequently used bikes.
+    """)
