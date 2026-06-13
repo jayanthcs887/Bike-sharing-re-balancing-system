@@ -18,7 +18,7 @@ st.set_page_config(
 
 @st.cache_data
 def load_data():
-    df = pd.read_csv("201912-capitalbikeshare-tripdata.csv")
+    df = pd.read_csv("data/201912-capitalbikeshare-tripdata.csv")
 
     df["Start date"] = pd.to_datetime(df["Start date"])
     df["End date"] = pd.to_datetime(df["End date"])
