@@ -87,7 +87,6 @@ page = st.sidebar.radio(
 
 if page == "Dashboard":
 
-    st.title("🚲 Bike Sharing Analytics Dashboard")
     st.markdown("""
     # 🚲 Bike Sharing Rebalancing Analytics
     
